@@ -1,2 +1,13 @@
 /postgres-keycloak-data
 2024__yandex-architecture-sso.code-workspace
+# кэш Питона
+__pycache__
+# Настройки среды
+.env*
+
+__pypackages__/
+.idea
+.venv
+.vscode
+.cursor*
+.cursor-*
