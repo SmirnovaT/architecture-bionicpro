@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import logging
 from keycloak import KeycloakOpenID
 from settings import settings
+import jwt
 
 logging.basicConfig(
     level=settings.log_level,
@@ -38,18 +39,38 @@ keycloak_openid = KeycloakOpenID(
 )
 
 
+def get_public_key():
+    try:
+        response = keycloak_openid.public_key()
+        return f"-----BEGIN PUBLIC KEY-----\n{response}\n-----END PUBLIC KEY-----"
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Error getting public key from Keycloak"
+        )
+
+
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Проверка роли пользователя и подписи токена"""
     try:
         token = credentials.credentials
-        payload = keycloak_openid.decode_token(
-            token,
-            options={"verify_signature": True, "verify_aud": True, "verify_exp": True},
-        )
+        public_key = get_public_key()
+        unverified_payload = jwt.decode(token, options={"verify_signature": False})
+        expected_issuer = unverified_payload.get("iss")
 
-        if settings.required_role not in payload.get("realm_access", {}).get(
-            "roles", []
-        ):
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            issuer=expected_issuer,
+            options={
+                "verify_signature": True,
+                "verify_aud": False,
+                "verify_exp": True,
+                "verify_iss": True,
+            },
+        )
+        user_roles = payload.get("realm_access", {}).get("roles", [])
+        if settings.required_role not in user_roles:
             logger.warning(
                 f"User does not have required role '{settings.required_role}'"
             )
@@ -57,10 +78,12 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
                 status_code=403,
                 detail=f"User does not have required role '{settings.required_role}'",
             )
-
         return payload
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(
+            status_code=401, detail=f"Invalid authentication credentials: {str(e)}"
+        )
     except Exception as e:
-        logger.error(f"Error verifying token: {str(e)}")
         raise HTTPException(
             status_code=401, detail="Invalid authentication credentials"
         )

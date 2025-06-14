@@ -40,7 +40,7 @@ services:
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_REALM=reports-realm
       - KEYCLOAK_CLIENT_ID=reports-api
-      - REQUIRED_ROLE=prosthetic_user
+      - REQUIRED_ROLE=prothetic_user
     depends_on:
       - keycloak
 
@@ -55,7 +55,7 @@ services:
       REACT_APP_KEYCLOAK_URL: http://localhost:8080
       REACT_APP_KEYCLOAK_REALM: reports-realm
       REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
-      REACT_APP_REQUIRED_ROLE: prosthetic_user
+      REACT_APP_REQUIRED_ROLE: prothetic_user
     depends_on:
       - reports-api
 
